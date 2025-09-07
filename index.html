@@ -1,0 +1,313 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>交易系统风险管理规则</title>
+    <style>
+        :root {
+            --primary-color: #2c3e50;
+            --secondary-color: #3498db;
+            --accent-color: #e74c3c;
+            --light-color: #ecf0f1;
+            --dark-color: #34495e;
+            --success-color: #2ecc71;
+            --warning-color: #f39c12;
+            --text-color: #333;
+            --border-radius: 8px;
+            --box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'PingFang SC', 'Microsoft YaHei', sans-serif;
+            line-height: 1.6;
+            color: var(--text-color);
+            background-color: #f5f7f9;
+            padding: 0;
+            margin: 0;
+        }
+        
+        header {
+            background: linear-gradient(135deg, var(--primary-color), var(--dark-color));
+            color: white;
+            padding: 2rem 0;
+            text-align: center;
+            margin-bottom: 2rem;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 20px;
+        }
+        
+        h1 {
+            font-size: 2.5rem;
+            margin-bottom: 0.5rem;
+        }
+        
+        .subtitle {
+            font-size: 1.2rem;
+            opacity: 0.9;
+            font-weight: 300;
+        }
+        
+        .card {
+            background: white;
+            border-radius: var(--border-radius);
+            box-shadow: var(--box-shadow);
+            padding: 1.5rem;
+            margin-bottom: 2rem;
+        }
+        
+        .card-header {
+            display: flex;
+            align-items: center;
+            margin-bottom: 1rem;
+            padding-bottom: 0.5rem;
+            border-bottom: 1px solid #eee;
+        }
+        
+        .card-icon {
+            background-color: var(--secondary-color);
+            color: white;
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-right: 1rem;
+            font-weight: bold;
+        }
+        
+        .card-title {
+            font-size: 1.5rem;
+            color: var(--primary-color);
+        }
+        
+        .rule-content {
+            margin-left: 3rem;
+        }
+        
+        .rule-description {
+            margin-bottom: 1rem;
+        }
+        
+        .code-block {
+            background-color: #f8f9fa;
+            border-left: 4px solid var(--secondary-color);
+            padding: 1rem;
+            margin: 1rem 0;
+            font-family: 'Courier New', monospace;
+            overflow-x: auto;
+            border-radius: 0 var(--border-radius) var(--border-radius) 0;
+        }
+        
+        .conditions {
+            margin-top: 1.5rem;
+        }
+        
+        .condition-item {
+            padding: 0.5rem 0;
+            border-bottom: 1px dashed #eee;
+        }
+        
+        .condition-item:last-child {
+            border-bottom: none;
+        }
+        
+        footer {
+            text-align: center;
+            padding: 2rem 0;
+            margin-top: 2rem;
+            background-color: var(--dark-color);
+            color: white;
+        }
+        
+        @media (max-width: 768px) {
+            .card-header {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+            
+            .card-icon {
+                margin-bottom: 0.5rem;
+            }
+            
+            .rule-content {
+                margin-left: 0;
+            }
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <div class="container">
+            <h1>交易系统风险管理规则</h1>
+            <p class="subtitle">基于Python代码的风险控制检查文档</p>
+        </div>
+    </header>
+    
+    <div class="container">
+        <div class="card">
+            <div class="card-header">
+                <div class="card-icon">1</div>
+                <h2 class="card-title">保证金检查</h2>
+            </div>
+            <div class="rule-content">
+                <p class="rule-description">
+                    此规则确保订单不会超过允许的最大保证金使用量，防止过度暴露和潜在的账户清算风险。
+                </p>
+                <div class="code-block">
+                    def order_exceeded_max_margin(self, order: Order):<br>
+                    &nbsp;&nbsp;&nbsp;&nbsp;provisional_margin = self.oms.estimate_margin(order)<br>
+                    &nbsp;&nbsp;&nbsp;&nbsp;provisional_commission = self.oms.estimate_commission(order)<br>
+                    &nbsp;&nbsp;&nbsp;&nbsp;self.logger.info(f"provisional_margin: {provisional_margin}, provisional_commission: {provisional_commission}")<br>
+                    &nbsp;&nbsp;&nbsp;&nbsp;assert (<br>
+                    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;AccountManager.cash - provisional_margin - provisional_commission > 0<br>
+                    &nbsp;&nbsp;&nbsp;&nbsp;), f"Cash balance ({AccountManager.cash}) insufficient for margin and commission: {provisional_margin + provisional_commission}"
+                </div>
+            </div>
+        </div>
+        
+        <div class="card">
+            <div class="card-header">
+                <div class="card-icon">2</div>
+                <h2 class="card-title">持仓限制检查</h2>
+            </div>
+            <div class="rule-content">
+                <p class="rule-description">
+                    此规则防止订单超出特定工具允许的最大持仓量，帮助管理集中度风险。
+                </p>
+                <div class="code-block">
+                    def order_exceeded_position_limit(self, order: Order):<br>
+                    &nbsp;&nbsp;&nbsp;&nbsp;if order.instrument_id not in self.config["instruments"]:<br>
+                    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;raise Exception(f"Unspecified max_position for instrument {order.instrument_id}")<br>
+                    &nbsp;&nbsp;&nbsp;&nbsp;if (<br>
+                    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;(order.direction == OrderSide.LONG and order.order_flag == OrderFlag.OPEN) or <br>
+                    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;(order.direction == OrderSide.SHORT and order.order_flag in [OrderFlag.CLOSE, OrderFlag.CLOSE_TODAY])<br>
+                    &nbsp;&nbsp;&nbsp;&nbsp;):<br>
+                    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;sign_volume = order.volume<br>
+                    &nbsp;&nbsp;&nbsp;&nbsp;else:<br>
+                    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;sign_volume = -order.volume<br>
+                    <br>
+                    &nbsp;&nbsp;&nbsp;&nbsp;net_position = PositionManager.current_position[order.instrument_id] + sign_volume<br>
+                    &nbsp;&nbsp;&nbsp;&nbsp;unsign_max_position = self.config["instruments"][order.instrument_id]["max_position"]<br>
+                    <br>
+                    &nbsp;&nbsp;&nbsp;&nbsp;assert (<br>
+                    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;((net_position) <= unsign_max_position) and ((net_position) >= -unsign_max_position)<br>
+                    &nbsp;&nbsp;&nbsp;&nbsp;), f"[order_exceeded_position_limit]: {order.instrument_id} Position {net_position} exceed limit of {unsign_max_position}"
+                </div>
+            </div>
+        </div>
+        
+        <div class="card">
+            <div class="card-header">
+                <div class="card-icon">3</div>
+                <h2 class="card-title">交易量限制检查</h2>
+            </div>
+            <div class="rule-content">
+                <p class="rule-description">
+                    此规则确保订单量符合特定工具的最小和最大交易量要求，这些要求根据订单类型有所不同。
+                </p>
+                <div class="code-block">
+                    def order_violated_volume_limit(self, order: Order):<br>
+                    &nbsp;&nbsp;&nbsp;&nbsp;instrument = InstrumentManager.get(order.instrument_id)<br>
+                    &nbsp;&nbsp;&nbsp;&nbsp;if order.order_type == OrderType.LIMIT:<br>
+                    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;volume_max_limit = instrument.MaxLimitOrderVolume<br>
+                    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;volume_min_limit = instrument.MinLimitOrderVolume<br>
+                    &nbsp;&nbsp;&nbsp;&nbsp;else:<br>
+                    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;volume_max_limit = instrument.MaxMarketOrderVolume<br>
+                    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;volume_min_limit = instrument.MinMarketOrderVolume<br>
+                    &nbsp;&nbsp;&nbsp;&nbsp;assert (<br>
+                    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;order.volume < volume_max_limit and order.volume >= volume_min_limit<br>
+                    &nbsp;&nbsp;&nbsp;&nbsp;), f"Order violated volume limit {order.volume} not in ({volume_min_limit} ~ {volume_max_limit})"
+                </div>
+            </div>
+        </div>
+        
+        <div class="card">
+            <div class="card-header">
+                <div class="card-icon">4</div>
+                <h2 class="card-title">交易时间窗口检查</h2>
+            </div>
+            <div class="rule-content">
+                <p class="rule-description">
+                    此规则用于验证订单是否在允许的交易时间内下达。（当前代码中尚未实现）
+                </p>
+                <div class="code-block">
+                    def is_order_within_live_trading_window(self, order: Order):<br>
+                    &nbsp;&nbsp;&nbsp;&nbsp;pass
+                </div>
+            </div>
+        </div>
+        
+        <div class="card">
+            <div class="card-header">
+                <div class="card-icon">5</div>
+                <h2 class="card-title">自成交检查</h2>
+            </div>
+            <div class="rule-content">
+                <p class="rule-description">
+                    此规则防止交易系统与自己发出的订单成交，避免市场操纵和利益冲突。
+                </p>
+                <div class="code-block">
+                    def _order_is_self_dealing(self, order1: Order, order2: Order) -> bool:<br>
+                    &nbsp;&nbsp;&nbsp;&nbsp;if order1.direction == order2.direction:<br>
+                    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;return False<br>
+                    &nbsp;&nbsp;&nbsp;&nbsp;if (<br>
+                    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;order1.order_type == OrderType.MARKET<br>
+                    &nbsp;&nbsp;&nbsp;&nbsp;) or (<br>
+                    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;order1.direction == OrderSide.LONG and order1.price > order2.price<br>
+                    &nbsp;&nbsp;&nbsp;&nbsp;) or (<br>
+                    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;order1.direction == OrderSide.SHORT and order1.price < order2.price<br>
+                    &nbsp;&nbsp;&nbsp;&nbsp;):<br>
+                    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;return True<br>
+                    <br>
+                    &nbsp;&nbsp;&nbsp;&nbsp;return False
+                </div>
+            </div>
+        </div>
+        
+        <div class="card">
+            <div class="card-header">
+                <div class="card-icon">6</div>
+                <h2 class="card-title">订单验证流程</h2>
+            </div>
+            <div class="rule-content">
+                <p class="rule-description">
+                    所有订单必须通过以下所有检查才能被视为有效订单。
+                </p>
+                <div class="code-block">
+                    def is_order_valid(self, order: Order):<br>
+                    &nbsp;&nbsp;&nbsp;&nbsp;conditions = [<br>
+                    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;self.order_exceeded_max_margin,<br>
+                    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;self.order_exceeded_position_limit,<br>
+                    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;self.order_violated_volume_limit,<br>
+                    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;self.is_order_within_live_trading_window,<br>
+                    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;self.is_self_dealing_order<br>
+                    &nbsp;&nbsp;&nbsp;&nbsp;]<br>
+                    <br>
+                    &nbsp;&nbsp;&nbsp;&nbsp;for condition in conditions:<br>
+                    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;(condition(order)) # 如果任何检查未通过，将引发异常<br>
+                    <br>
+                    &nbsp;&nbsp;&nbsp;&nbsp;self.logger.debug(f"All condition check passed. {order}")
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <footer>
+        <div class="container">
+            <p>交易系统风险管理文档 &copy; 2023</p>
+        </div>
+    </footer>
+</body>
+</html>
