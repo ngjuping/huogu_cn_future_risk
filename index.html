@@ -4,6 +4,10 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>交易系统风险管理规则</title>
+    <!-- 引入Prism.js语法高亮库 -->
+    <link href="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/themes/prism-tomorrow.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/prism.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/components/prism-python.min.js"></script>
     <style>
         :root {
             --primary-color: #2c3e50;
@@ -64,6 +68,11 @@
             box-shadow: var(--box-shadow);
             padding: 1.5rem;
             margin-bottom: 2rem;
+            transition: transform 0.3s ease;
+        }
+        
+        .card:hover {
+            transform: translateY(-5px);
         }
         
         .card-header {
@@ -98,16 +107,50 @@
         
         .rule-description {
             margin-bottom: 1rem;
+            line-height: 1.8;
         }
         
-        .code-block {
-            background-color: #f8f9fa;
-            border-left: 4px solid var(--secondary-color);
-            padding: 1rem;
-            margin: 1rem 0;
-            font-family: 'Courier New', monospace;
-            overflow-x: auto;
-            border-radius: 0 var(--border-radius) var(--border-radius) 0;
+        .code-container {
+            position: relative;
+            margin: 1.5rem 0;
+            border-radius: var(--border-radius);
+            overflow: hidden;
+        }
+        
+        .code-header {
+            background-color: #2d2d2d;
+            color: #ccc;
+            padding: 0.5rem 1rem;
+            font-size: 0.9rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .copy-btn {
+            background: transparent;
+            border: 1px solid #ccc;
+            color: #ccc;
+            padding: 0.25rem 0.5rem;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 0.8rem;
+            transition: all 0.2s;
+        }
+        
+        .copy-btn:hover {
+            background: #ccc;
+            color: #2d2d2d;
+        }
+        
+        pre[class*="language-"] {
+            margin: 0;
+            border-radius: 0;
+        }
+        
+        code[class*="language-"] {
+            font-size: 0.9rem;
+            line-height: 1.5;
         }
         
         .conditions {
@@ -144,6 +187,10 @@
             .rule-content {
                 margin-left: 0;
             }
+            
+            code[class*="language-"] {
+                font-size: 0.8rem;
+            }
         }
     </style>
 </head>
@@ -165,14 +212,18 @@
                 <p class="rule-description">
                     此规则确保订单不会超过允许的最大保证金使用量，防止过度暴露和潜在的账户清算风险。
                 </p>
-                <div class="code-block">
-                    def order_exceeded_max_margin(self, order: Order):<br>
-                    &nbsp;&nbsp;&nbsp;&nbsp;provisional_margin = self.oms.estimate_margin(order)<br>
-                    &nbsp;&nbsp;&nbsp;&nbsp;provisional_commission = self.oms.estimate_commission(order)<br>
-                    &nbsp;&nbsp;&nbsp;&nbsp;self.logger.info(f"provisional_margin: {provisional_margin}, provisional_commission: {provisional_commission}")<br>
-                    &nbsp;&nbsp;&nbsp;&nbsp;assert (<br>
-                    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;AccountManager.cash - provisional_margin - provisional_commission > 0<br>
-                    &nbsp;&nbsp;&nbsp;&nbsp;), f"Cash balance ({AccountManager.cash}) insufficient for margin and commission: {provisional_margin + provisional_commission}"
+                <div class="code-container">
+                    <div class="code-header">
+                        <span>Python</span>
+                        <button class="copy-btn" onclick="copyCode(this)">复制代码</button>
+                    </div>
+                    <pre><code class="language-python">def order_exceeded_max_margin(self, order: Order):
+    provisional_margin = self.oms.estimate_margin(order)
+    provisional_commission = self.oms.estimate_commission(order)
+    self.logger.info(f"provisional_margin: {provisional_margin}, provisional_commission: {provisional_commission}")
+    assert (
+        AccountManager.cash - provisional_margin - provisional_commission > 0
+    ), f"Cash balance ({AccountManager.cash}) insufficient for margin and commission: {provisional_margin + provisional_commission}"</code></pre>
                 </div>
             </div>
         </div>
@@ -186,24 +237,28 @@
                 <p class="rule-description">
                     此规则防止订单超出特定工具允许的最大持仓量，帮助管理集中度风险。
                 </p>
-                <div class="code-block">
-                    def order_exceeded_position_limit(self, order: Order):<br>
-                    &nbsp;&nbsp;&nbsp;&nbsp;if order.instrument_id not in self.config["instruments"]:<br>
-                    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;raise Exception(f"Unspecified max_position for instrument {order.instrument_id}")<br>
-                    &nbsp;&nbsp;&nbsp;&nbsp;if (<br>
-                    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;(order.direction == OrderSide.LONG and order.order_flag == OrderFlag.OPEN) or <br>
-                    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;(order.direction == OrderSide.SHORT and order.order_flag in [OrderFlag.CLOSE, OrderFlag.CLOSE_TODAY])<br>
-                    &nbsp;&nbsp;&nbsp;&nbsp;):<br>
-                    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;sign_volume = order.volume<br>
-                    &nbsp;&nbsp;&nbsp;&nbsp;else:<br>
-                    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;sign_volume = -order.volume<br>
-                    <br>
-                    &nbsp;&nbsp;&nbsp;&nbsp;net_position = PositionManager.current_position[order.instrument_id] + sign_volume<br>
-                    &nbsp;&nbsp;&nbsp;&nbsp;unsign_max_position = self.config["instruments"][order.instrument_id]["max_position"]<br>
-                    <br>
-                    &nbsp;&nbsp;&nbsp;&nbsp;assert (<br>
-                    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;((net_position) <= unsign_max_position) and ((net_position) >= -unsign_max_position)<br>
-                    &nbsp;&nbsp;&nbsp;&nbsp;), f"[order_exceeded_position_limit]: {order.instrument_id} Position {net_position} exceed limit of {unsign_max_position}"
+                <div class="code-container">
+                    <div class="code-header">
+                        <span>Python</span>
+                        <button class="copy-btn" onclick="copyCode(this)">复制代码</button>
+                    </div>
+                    <pre><code class="language-python">def order_exceeded_position_limit(self, order: Order):
+    if order.instrument_id not in self.config["instruments"]:
+        raise Exception(f"Unspecified max_position for instrument {order.instrument_id}")
+    if (
+        (order.direction == OrderSide.LONG and order.order_flag == OrderFlag.OPEN) or 
+        (order.direction == OrderSide.SHORT and order.order_flag in [OrderFlag.CLOSE, OrderFlag.CLOSE_TODAY])
+    ):
+        sign_volume = order.volume  
+    else:
+        sign_volume = -order.volume
+
+    net_position = PositionManager.current_position[order.instrument_id] + sign_volume
+    unsign_max_position = self.config["instruments"][order.instrument_id]["max_position"]
+
+    assert (
+        ((net_position) <= unsign_max_position) and ((net_position) >= -unsign_max_position)
+    ), f"[order_exceeded_position_limit]: {order.instrument_id} Position {net_position} exceed limit of {unsign_max_position}"</code></pre>
                 </div>
             </div>
         </div>
@@ -217,18 +272,22 @@
                 <p class="rule-description">
                     此规则确保订单量符合特定工具的最小和最大交易量要求，这些要求根据订单类型有所不同。
                 </p>
-                <div class="code-block">
-                    def order_violated_volume_limit(self, order: Order):<br>
-                    &nbsp;&nbsp;&nbsp;&nbsp;instrument = InstrumentManager.get(order.instrument_id)<br>
-                    &nbsp;&nbsp;&nbsp;&nbsp;if order.order_type == OrderType.LIMIT:<br>
-                    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;volume_max_limit = instrument.MaxLimitOrderVolume<br>
-                    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;volume_min_limit = instrument.MinLimitOrderVolume<br>
-                    &nbsp;&nbsp;&nbsp;&nbsp;else:<br>
-                    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;volume_max_limit = instrument.MaxMarketOrderVolume<br>
-                    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;volume_min_limit = instrument.MinMarketOrderVolume<br>
-                    &nbsp;&nbsp;&nbsp;&nbsp;assert (<br>
-                    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;order.volume < volume_max_limit and order.volume >= volume_min_limit<br>
-                    &nbsp;&nbsp;&nbsp;&nbsp;), f"Order violated volume limit {order.volume} not in ({volume_min_limit} ~ {volume_max_limit})"
+                <div class="code-container">
+                    <div class="code-header">
+                        <span>Python</span>
+                        <button class="copy-btn" onclick="copyCode(this)">复制代码</button>
+                    </div>
+                    <pre><code class="language-python">def order_violated_volume_limit(self, order: Order):
+    instrument = InstrumentManager.get(order.instrument_id)
+    if order.order_type == OrderType.LIMIT:
+        volume_max_limit = instrument.MaxLimitOrderVolume
+        volume_min_limit = instrument.MinLimitOrderVolume
+    else:
+        volume_max_limit = instrument.MaxMarketOrderVolume
+        volume_min_limit = instrument.MinMarketOrderVolume
+    assert (
+        order.volume < volume_max_limit and order.volume >= volume_min_limit
+    ), f"Order violated volume limit {order.volume} not in ({volume_min_limit} ~ {volume_max_limit})"</code></pre>
                 </div>
             </div>
         </div>
@@ -236,15 +295,30 @@
         <div class="card">
             <div class="card-header">
                 <div class="card-icon">4</div>
-                <h2 class="card-title">交易时间窗口检查</h2>
+                <h2 class="card-title">自成交检查</h2>
             </div>
             <div class="rule-content">
                 <p class="rule-description">
-                    此规则用于验证订单是否在允许的交易时间内下达。（当前代码中尚未实现）
+                    此规则防止交易系统与自己发出的订单成交，避免市场操纵和利益冲突。
                 </p>
-                <div class="code-block">
-                    def is_order_within_live_trading_window(self, order: Order):<br>
-                    &nbsp;&nbsp;&nbsp;&nbsp;pass
+                <div class="code-container">
+                    <div class="code-header">
+                        <span>Python</span>
+                        <button class="copy-btn" onclick="copyCode(this)">复制代码</button>
+                    </div>
+                    <pre><code class="language-python">def _order_is_self_dealing(self, order1: Order, order2: Order) -> bool:
+    if order1.direction == order2.direction:
+        return False
+    if (
+        order1.order_type == OrderType.MARKET
+    ) or (
+        order1.direction == OrderSide.LONG and order1.price > order2.price
+    ) or (
+        order1.direction == OrderSide.SHORT and order1.price < order2.price
+    ):
+        return True
+    
+    return False</code></pre>
                 </div>
             </div>
         </div>
@@ -252,53 +326,30 @@
         <div class="card">
             <div class="card-header">
                 <div class="card-icon">5</div>
-                <h2 class="card-title">自成交检查</h2>
-            </div>
-            <div class="rule-content">
-                <p class="rule-description">
-                    此规则防止交易系统与自己发出的订单成交，避免市场操纵和利益冲突。
-                </p>
-                <div class="code-block">
-                    def _order_is_self_dealing(self, order1: Order, order2: Order) -> bool:<br>
-                    &nbsp;&nbsp;&nbsp;&nbsp;if order1.direction == order2.direction:<br>
-                    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;return False<br>
-                    &nbsp;&nbsp;&nbsp;&nbsp;if (<br>
-                    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;order1.order_type == OrderType.MARKET<br>
-                    &nbsp;&nbsp;&nbsp;&nbsp;) or (<br>
-                    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;order1.direction == OrderSide.LONG and order1.price > order2.price<br>
-                    &nbsp;&nbsp;&nbsp;&nbsp;) or (<br>
-                    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;order1.direction == OrderSide.SHORT and order1.price < order2.price<br>
-                    &nbsp;&nbsp;&nbsp;&nbsp;):<br>
-                    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;return True<br>
-                    <br>
-                    &nbsp;&nbsp;&nbsp;&nbsp;return False
-                </div>
-            </div>
-        </div>
-        
-        <div class="card">
-            <div class="card-header">
-                <div class="card-icon">6</div>
                 <h2 class="card-title">订单验证流程</h2>
             </div>
             <div class="rule-content">
                 <p class="rule-description">
                     所有订单必须通过以下所有检查才能被视为有效订单。
                 </p>
-                <div class="code-block">
-                    def is_order_valid(self, order: Order):<br>
-                    &nbsp;&nbsp;&nbsp;&nbsp;conditions = [<br>
-                    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;self.order_exceeded_max_margin,<br>
-                    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;self.order_exceeded_position_limit,<br>
-                    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;self.order_violated_volume_limit,<br>
-                    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;self.is_order_within_live_trading_window,<br>
-                    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;self.is_self_dealing_order<br>
-                    &nbsp;&nbsp;&nbsp;&nbsp;]<br>
-                    <br>
-                    &nbsp;&nbsp;&nbsp;&nbsp;for condition in conditions:<br>
-                    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;(condition(order)) # 如果任何检查未通过，将引发异常<br>
-                    <br>
-                    &nbsp;&nbsp;&nbsp;&nbsp;self.logger.debug(f"All condition check passed. {order}")
+                <div class="code-container">
+                    <div class="code-header">
+                        <span>Python</span>
+                        <button class="copy-btn" onclick="copyCode(this)">复制代码</button>
+                    </div>
+                    <pre><code class="language-python">def is_order_valid(self, order: Order):
+    conditions = [
+        self.order_exceeded_max_margin,
+        self.order_exceeded_position_limit,
+        self.order_violated_volume_limit,
+        self.is_order_within_live_trading_window,
+        self.is_self_dealing_order
+    ]
+
+    for condition in conditions:
+        (condition(order)) # 如果任何检查未通过，将引发异常
+
+    self.logger.debug(f"All condition check passed. {order}")</code></pre>
                 </div>
             </div>
         </div>
@@ -306,8 +357,33 @@
     
     <footer>
         <div class="container">
-            <p>交易系统风险管理文档 &copy; 2023</p>
+            <p>交易系统风险管理文档 &copy; 2025</p>
         </div>
     </footer>
+
+    <script>
+        // 复制代码功能
+        function copyCode(button) {
+            const codeBlock = button.parentElement.nextElementSibling;
+            const textArea = document.createElement('textarea');
+            textArea.value = codeBlock.textContent;
+            document.body.appendChild(textArea);
+            textArea.select();
+            document.execCommand('copy');
+            document.body.removeChild(textArea);
+            
+            // 显示复制成功提示
+            const originalText = button.textContent;
+            button.textContent = '已复制!';
+            setTimeout(() => {
+                button.textContent = originalText;
+            }, 2000);
+        }
+        
+        // 页面加载完成后重新高亮所有代码块
+        document.addEventListener('DOMContentLoaded', function() {
+            Prism.highlightAll();
+        });
+    </script>
 </body>
 </html>
